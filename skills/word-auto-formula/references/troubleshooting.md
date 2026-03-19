@@ -1,6 +1,12 @@
 # Troubleshooting
 
-Read this file when the main conversion script cannot reach real Microsoft Word, MathType does not load, or some LaTeX fragments remain after the bulk pass.
+Read this file when:
+
+- the forward conversion script cannot reach real Microsoft Word
+- MathType does not load
+- some LaTeX fragments remain after the bulk pass
+- the reverse `latex-raw` export fails to convert `Equation.DSMT4` objects into editable TeX
+- the reverse `formula-preserved` export produces unexpected asset or Markdown output
 
 Default script behavior is intentionally conservative:
 - The stable path runs the whole-document MathType toggle, saves, and audits the result.
@@ -69,6 +75,21 @@ $word.GetType().InvokeMember(
 
 The bundled script already uses that form.
 
+## 3a. Reverse `latex-raw` export uses a different MathType command
+
+For reverse extraction from existing MathType OLE formulas to editable TeX text, the validated command in this session was:
+
+```powershell
+$word.Run("MathTypeCommands.UILib.MTCommand_TeXToggle")
+```
+
+That command is selection-based:
+
+1. select the target `InlineShape`
+2. run `MathTypeCommands.UILib.MTCommand_TeXToggle`
+
+Do not replace the forward bulk-toggle command with this one. The two paths solve different problems.
+
 ## 4. Residual `$...$` or `$$...$$` remain after the bulk pass
 
 What the script already does:
@@ -85,7 +106,41 @@ If leftovers remain:
 Known edge case:
 - Fragments like `$15$` may require a MathType-safe wrapper such as `\mathrm{15}` before they convert cleanly.
 
-## 5. Do not use WPS as a substitute host
+## 5. Reverse export says `formula_count = 0` in `latex-raw` mode
+
+That can be expected.
+
+In `latex-raw` mode, the workflow first converts MathType OLE formulas into plain TeX text inside a copied `.docx`. After that conversion, the Markdown extractor no longer sees those formulas as OLE objects or preview images, so the exported Markdown summary may show zero preserved formulas while still containing raw TeX text.
+
+Check the Markdown body itself before treating this as a failure.
+
+## 6. `formula-preserved` export works but `latex-raw` export fails
+
+That usually means:
+
+- the `.docx` package can be read directly
+- but Word COM or MathType is unavailable for the TeX-toggle step
+
+Check:
+
+1. Microsoft Word launches through `Word.Application`
+2. MathType is installed
+3. the selected formula objects report `ProgID = Equation.DSMT4`
+
+If only Markdown extraction is needed, stay on `formula-preserved`.
+
+## 7. Asset extraction produced images but formatting is not fully faithful
+
+The reverse extractor is intentionally conservative:
+
+- paragraphs and headings are exported in document order
+- tables are emitted as HTML tables
+- formula previews are preserved as images when still present
+- text color is preserved when it matters for revision markup
+
+It does not attempt complete Word layout reconstruction in Markdown.
+
+## 8. Do not use WPS as a substitute host
 
 WPS can sometimes host existing `Equation.DSMT4` objects, but it was not reliable for the insertion workflow:
 - WPS hosting was able to expose some OLE data paths.

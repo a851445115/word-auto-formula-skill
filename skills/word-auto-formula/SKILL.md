@@ -1,17 +1,28 @@
 ---
 name: word-auto-formula
-description: Insert formulas into Microsoft Word documents on Windows by converting LaTeX-delimited equations into native MathType objects through Word COM automation and the MathType add-in. Use when a user wants to batch-replace `$...$` or `$$...$$` in `.docx` files, verify whether `Word.Application` is still hijacked by WPS, audit residual LaTeX after conversion, or rerun the MathType macro safely on a working copy of a document.
+description: Use when working on Windows with Word, MathType, DOCX, Markdown, and LaTeX files, especially when formulas must be batch-converted into MathType, exported from MathType OLE into editable TeX, or preserved while extracting a DOCX document to Markdown.
 ---
 
 # Word Auto Formula
 
-Use this skill on Windows only. Run the bundled PowerShell scripts instead of rebuilding the Word + MathType COM workflow from scratch.
+Use this skill on Windows when formulas must move safely between Word, Markdown, and LaTeX.
 
 ## Quick Start
 
-- Main conversion script: `scripts/convert-docx-latex-to-formulas.ps1`
-- Audit script: `scripts/audit-docx-formulas.ps1`
-- Troubleshooting guide: `references/troubleshooting.md`
+Main scripts:
+
+- forward conversion: `scripts/convert-docx-latex-to-formulas.ps1`
+- forward audit: `scripts/audit-docx-formulas.ps1`
+- reverse export wrapper: `scripts/export-docx-to-md.ps1`
+- reverse TeX helper: `scripts/convert-docx-mathtype-to-latex.ps1`
+- troubleshooting: `references/troubleshooting.md`
+- reverse export notes: `references/docx-to-markdown.md`
+
+## Supported Workflows
+
+## 1. LaTeX text in DOCX -> MathType formulas
+
+Use this when a `.docx` contains `$...$` or `$$...$$` text that should become native MathType objects.
 
 ```powershell
 $SKILL_DIR = "C:\path\to\word-auto-formula"
@@ -20,44 +31,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File `
   -InputPath "C:\path\to\document.docx"
 ```
 
-Default behavior:
-- Work on a copy named `{filename}_mathtype.docx`
-- Verify that `Word.Application` resolves to real Microsoft Word
-- Load `MathType Commands 2016.dotm` from common install paths
-- Run `MTCommand_OnTexToggle` over the whole document
-- Save the converted document and audit the remaining visible LaTeX snippets
-- Print MathType object counts plus sample leftovers for inspection
-
-Optional cleanup:
-- Add `-AggressiveCleanup` to attempt delimiter cleanup and targeted residual passes
-- Treat that mode as best-effort: use it only when the stable conversion pass leaves obvious leftovers and the user accepts slower cleanup work
-
-## Workflow
-
-1. Resolve the input `.docx` path and default to a copy unless the user explicitly requests in-place edits.
-2. Run `scripts/convert-docx-latex-to-formulas.ps1`.
-3. If preflight reports that WPS still owns `Word.Application`, stop and follow `references/troubleshooting.md`.
-4. If the final audit still shows leftover `$...$` or `$$...$$`, inspect the reported samples and retry with `-Visible` for live debugging before making manual fixes.
-5. If the document contains tables encoded as plain text or LaTeX table blocks, keep or rebuild them as Word tables instead of forcing the whole block through MathType.
-
-## Commands
+Optional commands:
 
 ```powershell
-# Convert on a working copy
-powershell -NoProfile -ExecutionPolicy Bypass -File `
-  "$SKILL_DIR\scripts\convert-docx-latex-to-formulas.ps1" `
-  -InputPath "C:\path\to\document.docx"
-
-# Convert in place and keep Word visible during debugging
-powershell -NoProfile -ExecutionPolicy Bypass -File `
-  "$SKILL_DIR\scripts\convert-docx-latex-to-formulas.ps1" `
-  -InputPath "C:\path\to\document.docx" `
-  -InPlace `
-  -Visible
-```
-
-```powershell
-# Enable best-effort residual cleanup after the stable bulk pass
+# Best-effort residual cleanup
 powershell -NoProfile -ExecutionPolicy Bypass -File `
   "$SKILL_DIR\scripts\convert-docx-latex-to-formulas.ps1" `
   -InputPath "C:\path\to\document.docx" `
@@ -65,32 +42,84 @@ powershell -NoProfile -ExecutionPolicy Bypass -File `
 ```
 
 ```powershell
-# Verify Word/MathType wiring without touching the document
+# Preflight only
 powershell -NoProfile -ExecutionPolicy Bypass -File `
   "$SKILL_DIR\scripts\convert-docx-latex-to-formulas.ps1" `
   -InputPath "C:\path\to\document.docx" `
   -PreflightOnly
 ```
 
+## 2. DOCX(MathType OLE) -> Markdown with formula images
+
+Use `formula-preserved` when formulas must stay visually exact in Markdown.
+
 ```powershell
-# Audit an already-converted document
+$SKILL_DIR = "C:\path\to\word-auto-formula"
 powershell -NoProfile -ExecutionPolicy Bypass -File `
-  "$SKILL_DIR\scripts\audit-docx-formulas.ps1" `
-  -InputPath "C:\path\to\document_mathtype.docx"
+  "$SKILL_DIR\scripts\export-docx-to-md.ps1" `
+  -InputPath "C:\path\to\document.docx" `
+  -Mode formula-preserved
+```
+
+Default outputs:
+
+- `{basename}_formula-preserved.md`
+- `{basename}_formula-preserved_assets\`
+
+Requirements:
+
+- PowerShell
+- Python 3
+
+## 3. DOCX(MathType OLE) -> editable TeX DOCX copy -> Markdown with raw TeX
+
+Use `latex-raw` when the formulas should become editable TeX text in a copied `.docx` and in the exported Markdown.
+
+```powershell
+$SKILL_DIR = "C:\path\to\word-auto-formula"
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  "$SKILL_DIR\scripts\export-docx-to-md.ps1" `
+  -InputPath "C:\path\to\document.docx" `
+  -Mode latex-raw
+```
+
+Default outputs:
+
+- `{basename}_latex.docx`
+- `{basename}_latex_raw.md`
+- `{basename}_latex_raw_assets\`
+
+Requirements:
+
+- Microsoft Word
+- MathType
+- Python 3
+
+## 4. Direct MathType OLE -> TeX conversion on a working copy
+
+Use this lower-level helper when only the copied `.docx` is needed.
+
+```powershell
+$SKILL_DIR = "C:\path\to\word-auto-formula"
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  "$SKILL_DIR\scripts\convert-docx-mathtype-to-latex.ps1" `
+  -SourcePath "C:\path\to\document.docx" `
+  -DestinationPath "C:\path\to\document_latex.docx"
 ```
 
 ## Guardrails
 
-- Do not use WPS for this workflow. WPS can host MathType OLE objects but is not reliable for the Word automation path that actually converts TeX at scale.
-- Keep the document closed before running the conversion script.
-- Preserve the original file unless the user explicitly requests `-InPlace`.
-- Treat residual snippets after the stable bulk pass as targeted cleanup work, not as proof that the conversion workflow failed.
-- When the user reports formatting drift after conversion, fix Word styles separately from MathType conversion.
+- Do not use WPS as a substitute for Microsoft Word when Word COM automation is required.
+- Keep the original file untouched unless the script explicitly documents in-place behavior.
+- Treat `formula-preserved` and `latex-raw` as different outputs for different needs. One prioritizes visual fidelity; the other prioritizes editability.
+- When a document carries revision meaning through red text, keep those color cues in the Markdown export.
+- Fix styling drift separately from formula conversion logic.
 
 ## Known Good Baseline
 
 - `Word.Application` should identify itself as `Microsoft Word`, not WPS.
 - A validated MathType template path on this machine was `C:\Program Files (x86)\MathType\Office Support\32\MathType Commands 2016.dotm`.
-- The macro invocation that worked reliably from PowerShell was reflection-based `InvokeMember('Run', ...)`, not a plain `Application.Run(...)` call.
+- Forward bulk conversion worked reliably through reflection-based `InvokeMember('Run', ...)`.
+- Reverse OLE-to-TeX extraction worked reliably by selecting `Equation.DSMT4` inline shapes and running `MathTypeCommands.UILib.MTCommand_TeXToggle`.
 
 Read `references/troubleshooting.md` when the environment drifts away from that baseline.
