@@ -9,7 +9,7 @@ Use this mode when the document contains MathType OLE formulas and you need the 
 Command:
 
 ```powershell
-$SKILL_DIR = "C:\path\to\word-auto-formula"
+$SKILL_DIR = "C:\path\to\document-formula-bridge"
 powershell -NoProfile -ExecutionPolicy Bypass -File `
   "$SKILL_DIR\scripts\export-docx-to-md.ps1" `
   -InputPath "C:\path\to\document.docx" `
@@ -35,7 +35,7 @@ Use this mode when the document contains MathType OLE formulas and you want an e
 Command:
 
 ```powershell
-$SKILL_DIR = "C:\path\to\word-auto-formula"
+$SKILL_DIR = "C:\path\to\document-formula-bridge"
 powershell -NoProfile -ExecutionPolicy Bypass -File `
   "$SKILL_DIR\scripts\export-docx-to-md.ps1" `
   -InputPath "C:\path\to\document.docx" `

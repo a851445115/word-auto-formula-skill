@@ -1,4 +1,0 @@
-interface:
-  display_name: "Word Auto Formula"
-  short_description: "Bridge Word, Markdown, and MathType formulas"
-  default_prompt: "Use $word-auto-formula when a Windows workflow needs DOCX formula insertion, MathType-to-TeX extraction, or DOCX-to-Markdown export with formulas preserved."

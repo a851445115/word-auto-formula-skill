@@ -1,0 +1,4 @@
+interface:
+  display_name: "Document Formula Bridge"
+  short_description: "Bridge PDF, DOCX, Markdown, and LaTeX formulas"
+  default_prompt: "Use $document-formula-bridge when a Windows workflow must move formulas between PDF, DOCX, Markdown, and LaTeX, including Word+MathType automation and PDF-to-Markdown extraction."
